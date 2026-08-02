@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>デジタル・バックギャモン</title>
+<style>
+  :root{
+    --wood:#7a4b2a;--wood2:#4d2c19;--felt:#1f6f5f;--light:#f4dfb3;--dark:#6f2f2f;
+    --cream:#f7f1df;--ink:#1f2328;--gold:#f3c969;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;background:linear-gradient(135deg,#18211f,#2e3a36);color:#fff;min-height:100vh;padding:18px}
+  .app{max-width:1180px;margin:auto}
+  h1{margin:0 0 6px;font-size:clamp(24px,4vw,40px)}
+  .sub{opacity:.82;margin-bottom:14px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#ffffff12;padding:12px;border-radius:16px;margin-bottom:14px}
+  button{border:0;border-radius:12px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--gold);color:#2b2112;box-shadow:0 3px 0 #9e7d35}
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 #9e7d35}
+  button.secondary{background:#e8eceb;box-shadow:0 3px 0 #87928e}
+  button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .status{flex:1;min-width:240px;background:#0d1513aa;padding:10px 14px;border-radius:12px;font-weight:700}
+  .dice{display:flex;gap:8px}.die{width:44px;height:44px;background:#fff;color:#111;border-radius:10px;display:grid;place-items:center;font-size:25px;font-weight:800;box-shadow:inset 0 0 0 2px #ddd}
+  .board-wrap{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:14px}
+  .board{position:relative;background:linear-gradient(90deg,var(--wood),#9a6638,var(--wood));border:12px solid var(--wood2);border-radius:18px;padding:10px;box-shadow:0 15px 35px #0008;min-height:620px}
+  .playfield{height:100%;min-height:576px;background:var(--felt);display:grid;grid-template-columns:repeat(6,1fr) 56px repeat(6,1fr);grid-template-rows:1fr 1fr;gap:4px;padding:8px;border-radius:8px;position:relative}
+  .point{position:relative;min-width:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .point.top{align-items:flex-start}.point.bottom{align-items:flex-end}
+  .triangle{position:absolute;left:6%;right:6%;height:88%;filter:drop-shadow(0 2px 1px #0004)}
+  .top .triangle{top:0;clip-path:polygon(0 0,100% 0,50% 100%)}
+  .bottom .triangle{bottom:0;clip-path:polygon(0 100%,100% 100%,50% 0)}
+  .point.light .triangle{background:var(--light)}.point.dark .triangle{background:var(--dark)}
+  .stack{z-index:2;display:flex;flex-direction:column;gap:2px;align-items:center;max-height:94%;justify-content:flex-start}
+  .bottom .stack{flex-direction:column-reverse}
+  .checker{width:clamp(28px,4.2vw,46px);aspect-ratio:1;border-radius:50%;border:3px solid #0004;display:grid;place-items:center;font-size:12px;font-weight:900;box-shadow:inset 0 0 0 3px #ffffff35,0 2px 3px #0006;user-select:none}
+  .checker.white{background:radial-gradient(circle at 35% 30%,#fff,#ded7c3 70%);color:#222}.checker.black{background:radial-gradient(circle at 35% 30%,#5b5b5b,#111 70%);color:#fff}
+  .point.selected{outline:4px solid #ffd84f;outline-offset:-4px;border-radius:8px}.point.legal::after{content:"";position:absolute;width:24px;height:24px;border-radius:50%;background:#65ff86bb;z-index:3;box-shadow:0 0 0 5px #1b7f3d88}
+  .bar{grid-column:7;grid-row:1/3;background:#4c2b19;border-radius:8px;display:flex;flex-direction:column;justify-content:space-between;padding:10px 4px;z-index:4}
+  .bar-zone{min-height:45%;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}.bar-zone.bottom{flex-direction:column-reverse}
+  .side{background:#ffffff12;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+  .panel{background:#0c1412aa;border-radius:12px;padding:12px}.panel h3{margin:0 0 8px;font-size:16px}.off-count{font-size:14px;font-weight:800;margin-bottom:7px;color:#f3c969}.off{display:flex;gap:6px;flex-wrap:wrap;min-height:46px;align-items:flex-start}.off-piece{width:14px;height:42px;border-radius:7px;border:2px solid #0006;box-shadow:0 2px 3px #0008}.off-piece.white{background:linear-gradient(90deg,#fff,#d8cfba);border-color:#fff8}.off-piece.black{background:linear-gradient(90deg,#777,#181818,#666);border-color:#f3c969;box-shadow:0 0 0 1px #fff6,0 2px 4px #000}
+  .legend{font-size:13px;line-height:1.55;opacity:.9}.turn-white{color:#fff2b8}.turn-black{color:#d9d9d9}
+  .message{min-height:70px;white-space:pre-line;font-size:14px;line-height:1.5}.hint{background:#17342f;border:1px solid #ffffff22}.hint strong{color:#f3c969}.modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.show{display:flex}.modal-card{max-width:760px;max-height:88vh;overflow:auto;background:#f7f1df;color:#1f2328;border-radius:18px;padding:22px;box-shadow:0 20px 60px #000a}.modal-card h2{margin-top:0}.modal-card h3{margin-bottom:4px}.rule-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.rule-box{background:#fff;border-radius:12px;padding:12px;border:1px solid #ddd}.close-row{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.tutorial-step{font-size:18px;line-height:1.65}.tutorial-step b{color:#6f2f2f}@media(max-width:650px){.rule-grid{grid-template-columns:1fr}}
+  @media(max-width:850px){.board-wrap{grid-template-columns:1fr}.side{display:grid;grid-template-columns:repeat(2,1fr)}.board{min-height:520px}.playfield{min-height:480px}.checker{width:clamp(24px,6vw,40px)}}
+  @media(max-width:560px){body{padding:8px}.board{border-width:8px;padding:6px;min-height:430px}.playfield{min-height:400px;grid-template-columns:repeat(6,1fr) 34px repeat(6,1fr);gap:1px;padding:4px}.checker{width:25px;border-width:2px}.side{grid-template-columns:1fr 1fr}.toolbar{padding:8px}.die{width:38px;height:38px}}
+
+  .turn-indicator{display:flex;gap:8px;align-items:center;width:100%}
+  .player-turn{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 12px;border-radius:14px;font-weight:900;opacity:.42;transform:scale(.98);transition:.2s ease;border:2px solid transparent}
+  .player-turn .mini-checker{width:28px;height:28px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 3px #ffffff35,0 2px 3px #0006}
+  .player-turn.white .mini-checker{background:radial-gradient(circle at 35% 30%,#fff,#ded7c3 70%);border:2px solid #c8bfa9}
+  .player-turn.black .mini-checker{background:radial-gradient(circle at 35% 30%,#666,#111 70%);border:2px solid #999}
+  .player-turn.active{opacity:1;transform:scale(1.02);border-color:#ffd84f;box-shadow:0 0 0 3px #ffd84f33,0 0 20px #ffd84f55}
+  .player-turn.white.active{background:#fff;color:#242424}.player-turn.black.active{background:#202020;color:#fff}
+  .player-turn .arrow{font-size:20px;visibility:hidden}.player-turn.active .arrow{visibility:visible;animation:pulseTurn .8s infinite alternate}
+  @keyframes pulseTurn{from{transform:translateX(0)}to{transform:translateX(5px)}}
+  body.white-turn .board{box-shadow:0 0 0 5px #fff8,0 15px 35px #0008}
+  body.black-turn .board{box-shadow:0 0 0 5px #111,0 0 0 8px #fff4,0 15px 35px #0008}
+  .status.turn-now{font-size:18px;text-align:center;border:2px solid #ffd84f;box-shadow:0 0 18px #ffd84f44}
+  .victory-card{text-align:center;max-width:520px;background:linear-gradient(180deg,#fff8d7,#f7f1df);overflow:hidden}
+  .victory-icon{font-size:76px;line-height:1;margin:4px 0 8px;animation:victoryPop .7s ease both}
+  .victory-title{font-size:clamp(30px,7vw,52px);margin:0;color:#6b3b16}
+  .victory-player{font-size:28px;font-weight:900;margin:10px 0;color:#1f2328}
+  .victory-message{font-size:18px;line-height:1.65;margin:10px auto 18px;max-width:390px}
+  @keyframes victoryPop{0%{transform:scale(.3) rotate(-15deg);opacity:0}65%{transform:scale(1.2) rotate(8deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+  @media(max-width:650px){.turn-indicator{flex-direction:column}.player-turn{width:100%}}
+
+  /* ===== 1画面フィット用レスポンシブ調整 ===== */
+  html,body{width:100%;height:100%;overflow:hidden}
+  body{height:100dvh;min-height:0;padding:8px}
+  .app{height:calc(100dvh - 16px);max-width:1400px;display:flex;flex-direction:column;min-height:0}
+  h1{font-size:clamp(20px,2.5vw,32px);line-height:1.05;margin:0 0 2px}
+  .sub{font-size:12px;margin:0 0 6px}
+  .toolbar{flex:0 0 auto;margin-bottom:7px;padding:7px;gap:6px;border-radius:12px}
+  .toolbar button{padding:7px 10px;border-radius:9px;font-size:12px;box-shadow:0 2px 0 #9e7d35}
+  .toolbar button.secondary{box-shadow:0 2px 0 #87928e}
+  .die{width:34px;height:34px;font-size:21px;border-radius:8px}
+  .status.turn-now{font-size:14px;padding:7px 10px;min-width:210px}
+  .turn-indicator{gap:6px}
+  .player-turn{padding:6px 9px;border-radius:10px;font-size:13px}
+  .player-turn .mini-checker{width:22px;height:22px}
+  .player-turn .arrow{font-size:15px}
+  .board-wrap{flex:1;min-height:0;overflow:hidden;grid-template-columns:minmax(0,1fr) minmax(150px,190px);gap:7px}
+  .board{height:100%;min-height:0;border-width:8px;padding:6px;border-radius:14px}
+  .playfield{height:100%;min-height:0;padding:5px;gap:2px;grid-template-columns:repeat(6,1fr) 42px repeat(6,1fr)}
+  .checker{width:min(4.2vw,4.8vh,42px);min-width:20px;border-width:2px}
+  .bar{padding:5px 2px}
+  .side{height:100%;min-height:0;padding:7px;gap:6px;border-radius:12px;overflow:auto}
+  .panel{padding:7px;border-radius:9px;font-size:12px}
+  .panel h3{font-size:13px;margin-bottom:3px}.off-count{font-size:12px;margin-bottom:3px}
+  .off{gap:3px;min-height:28px}.off-piece{width:9px;height:26px;border-radius:5px}
+  .message{min-height:42px;font-size:11px;line-height:1.3}.legend{font-size:10px;line-height:1.3}.hint{font-size:11px;line-height:1.3}
+
+  @media(max-width:850px){
+    body{padding:5px}.app{height:calc(100dvh - 10px)}
+    h1{font-size:18px}.sub{display:none}
+    .toolbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:4px;padding:5px;margin-bottom:5px}
+    .toolbar button{padding:6px 3px;font-size:10px;white-space:nowrap}
+    .dice{gap:3px}.die{width:30px;height:30px;font-size:19px}
+    .status{grid-column:1 / -1;min-width:0;font-size:12px!important;padding:5px 7px!important}
+    .turn-indicator{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+    .player-turn{width:auto!important;padding:4px 5px;font-size:11px;gap:5px}
+    .player-turn .mini-checker{width:18px;height:18px}.player-turn .arrow{font-size:12px}
+    .board-wrap{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:4px;overflow:hidden}
+    .board{min-height:0;height:100%;border-width:6px;padding:4px}
+    .playfield{min-height:0;height:100%;grid-template-columns:repeat(6,1fr) 30px repeat(6,1fr);gap:1px;padding:3px}
+    .checker{width:min(6vw,4.7vh,34px);min-width:17px;font-size:9px}
+    .side{height:auto;display:grid;grid-template-columns:1fr 1fr 1fr 2fr;padding:4px;gap:4px;overflow:hidden}
+    .side .panel{padding:4px;font-size:9px;min-height:0}.side .panel h3{font-size:10px;margin:0}.off-count{font-size:9px;margin:0}
+    .off{min-height:13px;gap:1px;max-height:20px;overflow:hidden}.off-piece{width:5px;height:15px;border-width:1px}
+    .side .message,.side .legend{display:none}.side .hint{font-size:9px;line-height:1.15;overflow:hidden;max-height:44px}
+  }
+  @media(max-width:560px){
+    h1{font-size:15px;margin-bottom:2px}
+    .toolbar{grid-template-columns:repeat(5,minmax(0,1fr)) 64px}
+    .toolbar button{font-size:9px;padding:5px 2px}
+    .die{width:27px;height:27px;font-size:17px}
+    .status{font-size:11px!important}
+    .player-turn{font-size:10px;padding:3px}.player-turn .mini-checker{width:16px;height:16px}
+    .board{border-width:5px;padding:3px}.playfield{grid-template-columns:repeat(6,1fr) 25px repeat(6,1fr);padding:2px}
+    .checker{width:min(6.2vw,4.3vh,29px);min-width:15px;border-width:1px}
+    .side{grid-template-columns:1fr 1fr 1fr 2.2fr}
+  }
+  @media(max-height:700px){
+    h1{display:none}.sub{display:none}
+    .toolbar{margin-bottom:3px;padding:3px}.toolbar button{padding-top:4px;padding-bottom:4px}
+    .status{padding-top:3px!important;padding-bottom:3px!important}.player-turn{padding-top:2px;padding-bottom:2px}
+    .side .hint{max-height:34px}.off{max-height:14px}
+  }
+  @media(orientation:landscape) and (max-height:520px){
+    .app{height:calc(100dvh - 8px)}body{padding:4px}
+    .toolbar{display:flex;flex-wrap:nowrap;align-items:center}.toolbar .turn-indicator{width:auto;flex:1;display:flex}.toolbar .status{display:none}
+    .player-turn{padding:3px 5px}.board-wrap{grid-template-columns:minmax(0,1fr) 150px;grid-template-rows:1fr}
+    .side{height:100%;display:flex;flex-direction:column;overflow:hidden}.side .message,.side .legend{display:none}.side .hint{font-size:9px;max-height:52px}
+    .checker{width:min(4vw,7.5vh,34px)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🎲 デジタル・バックギャモン</h1>
+  <div class="sub">2人対戦用の試作版です。白から開始します。</div>
+  <div class="toolbar">
+    <button id="rollBtn">サイコロを振る</button>
+    <button id="undoBtn" class="secondary">一手戻す</button>
+    <button id="newBtn" class="secondary">最初から</button>
+    <button id="ruleBtn" class="secondary">📘 ルールを見る</button>
+    <button id="tutorialBtn" class="secondary">🎓 チュートリアル</button>
+    <div class="dice" aria-label="サイコロ"><div class="die" id="die1">⚀</div><div class="die" id="die2">⚀</div></div>
+    <div class="status turn-now" id="status">⚪ 白の番です。サイコロを振ってください。</div>
+    <div class="turn-indicator" aria-label="現在の手番">
+      <div class="player-turn white active" id="whiteTurn"><span class="mini-checker"></span><span class="arrow">▶</span><span>白の番</span></div>
+      <div class="player-turn black" id="blackTurn"><span class="mini-checker"></span><span class="arrow">▶</span><span>黒の番</span></div>
+    </div>
+  </div>
+  <div class="board-wrap">
+    <div class="board"><div class="playfield" id="playfield"><div class="point top dark" data-point="13" style="grid-column:1;grid-row:1"><div class="triangle"></div><div class="stack"><div class="checker white"></div><div class="checker white"></div><div class="checker white"></div><div class="checker white"></div><div class="checker white"></div></div></div><div class="point top light" data-point="14" style="grid-column:2;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="point top dark" data-point="15" style="grid-column:3;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="point top light" data-point="16" style="grid-column:4;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="point top dark" data-point="17" style="grid-column:5;grid-row:1"><div class="triangle"></div><div class="stack"><div class="checker black"></div><div class="checker black"></div><div class="checker black"></div></div></div><div class="point top light" data-point="18" style="grid-column:6;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="bar"><div class="bar-zone top" data-bar="black"></div><div class="bar-zone bottom" data-bar="white"></div></div><div class="point top dark" data-point="19" style="grid-column:8;grid-row:1"><div class="triangle"></div><div class="stack"><div class="checker black"></div><div class="checker black"></div><div class="checker black"></div><div class="checker black"></div><div class="checker black"></div></div></div><div class="point top light" data-point="20" style="grid-column:9;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="point top dark" data-point="21" style="grid-column:10;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="point top light" data-point="22" style="grid-column:11;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="point top dark" data-point="23" style="grid-column:12;grid-row:1"><div class="triangle"></div><div class="stack"></div></div><div class="point top light" data-point="24" style="grid-column:13;grid-row:1"><div class="triangle"></div><div class="stack"><div class="checker white"></div><div class="checker white"></div></div></div><div class="point bottom light" data-point="12" style="grid-column:1;grid-row:2"><div class="triangle"></div><div class="stack"><div class="checker black"></div><div class="checker black"></div><div class="checker black"></div><div class="checker black"></div><div class="checker black"></div></div></div><div class="point bottom dark" data-point="11" style="grid-column:2;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom light" data-point="10" style="grid-column:3;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom dark" data-point="9" style="grid-column:4;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom light" data-point="8" style="grid-column:5;grid-row:2"><div class="triangle"></div><div class="stack"><div class="checker white"></div><div class="checker white"></div><div class="checker white"></div></div></div><div class="point bottom dark" data-point="7" style="grid-column:6;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom light" data-point="6" style="grid-column:8;grid-row:2"><div class="triangle"></div><div class="stack"><div class="checker white"></div><div class="checker white"></div><div class="checker white"></div><div class="checker white"></div><div class="checker white"></div></div></div><div class="point bottom dark" data-point="5" style="grid-column:9;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom light" data-point="4" style="grid-column:10;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom dark" data-point="3" style="grid-column:11;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom light" data-point="2" style="grid-column:12;grid-row:2"><div class="triangle"></div><div class="stack"></div></div><div class="point bottom dark" data-point="1" style="grid-column:13;grid-row:2"><div class="triangle"></div><div class="stack"><div class="checker black"></div><div class="checker black"></div></div></div></div></div>
+    <aside class="side">
+      <div class="panel"><h3>白のゴール</h3><div class="off-count" id="offWhiteCount">0 / 15</div><div class="off" id="offWhite"></div></div>
+      <div class="panel"><h3>黒のゴール</h3><div class="off-count" id="offBlackCount">0 / 15</div><div class="off" id="offBlack"></div></div>
+      <div class="panel"><h3>残りの目</h3><div id="remaining">—</div></div>
+      <div class="panel message" id="message">駒をクリックし、緑色で示された移動先を選んでください。</div>
+      <div class="panel hint" id="hint"><strong>💡 ヒント</strong><br>まず「サイコロを振る」を押してみましょう。</div>
+      <div class="panel legend"><b>操作方法</b><br>1. サイコロを振る<br>2. 動かす駒を選ぶ<br>3. 緑色の地点を選ぶ<br><br>白は24→1、黒は1→24へ進みます。</div>
+    </aside>
+  </div>
+</div>
+
+<div class="modal" id="ruleModal"><div class="modal-card"><h2>📘 バックギャモンの基本ルール</h2><div class="rule-grid">
+<div class="rule-box"><h3>🎯 目的</h3>15個の自分の駒をすべて自分のホームボードへ運び、先に全部ゴール（ベアオフ）した人の勝ちです。</div>
+<div class="rule-box"><h3>➡️ 進む方向</h3>白は <b>24 → 1</b>、黒は <b>1 → 24</b> の方向へ進みます。相手とは逆方向です。</div>
+<div class="rule-box"><h3>🎲 サイコロ</h3>2個のサイコロの目を、それぞれ別々の移動として使います。例えば3と5なら「3進む」「5進む」ができます。</div>
+<div class="rule-box"><h3>✨ ゾロ目</h3>同じ目が出たら、その数字を4回使えます。たとえば4・4なら4マス移動を4回できます。</div>
+<div class="rule-box"><h3>🚧 入れない場所</h3>相手の駒が2個以上あるポイントには入れません。自分の駒や、相手が1個だけの場所には入れます。</div>
+<div class="rule-box"><h3>💥 ヒット</h3>相手の駒が1個だけの場所に入ると、その駒を取って中央のバーへ送れます。</div>
+<div class="rule-box"><h3>↩️ バーから復帰</h3>自分の駒がバーにある間は、まずその駒を相手側のホームボードへ戻さなければなりません。</div>
+<div class="rule-box"><h3>🏁 ベアオフ</h3>15個すべてが自分のホームボードに入ったら、サイコロの目を使って盤外へ出せます。15個すべて出せば勝ちです。</div>
+</div><p style="margin-top:14px"><b>この試作版では：</b>動かせる移動先が緑色で表示されます。迷ったらゲーム画面の「💡 ヒント」を見てください。</p><div class="close-row"><button id="closeRule">閉じる</button></div></div></div>
+<div class="modal" id="tutorialModal"><div class="modal-card"><h2>🎓 はじめてのバックギャモン</h2><div class="tutorial-step" id="tutorialText"></div><div class="close-row"><button class="secondary" id="tutorialPrev">← 前へ</button><button id="tutorialNext">次へ →</button><button class="secondary" id="tutorialClose">閉じる</button></div></div></div>
+
+<div class="modal" id="victoryModal"><div class="modal-card victory-card">
+  <div class="victory-icon" id="victoryIcon">🏆</div>
+  <h2 class="victory-title">おめでとう！</h2>
+  <div class="victory-player" id="victoryPlayer">白の勝ち！</div>
+  <div class="victory-message" id="victoryMessage">すばらしい対局でした！</div>
+  <div class="close-row" style="justify-content:center"><button id="victoryNew">もう一度遊ぶ</button><button class="secondary" id="victoryClose">盤面を見る</button></div>
+</div></div>
+<noscript><div style="max-width:1180px;margin:12px auto;padding:12px;background:#7a1f1f;color:white;border-radius:10px">この表示ではゲーム機能を実行できません。ファイルをダウンロードし、SafariまたはChromeで開いてください。</div></noscript>
+<script>
+window.addEventListener('error',function(e){var m=document.getElementById('message');if(m)m.textContent='読み込みエラー: '+e.message;});
+(() => {
+  const points = Array.from({length:24},()=>({color:null,count:0}));
+  let bar={white:0,black:0}, off={white:0,black:0}, turn='white', dice=[], rolled=false, selected=null, history=[], winner=null;
+  let transitionTimer=null, stateVersion=0, inputLocked=false;
+  const pf=document.getElementById('playfield'), status=document.getElementById('status'), remaining=document.getElementById('remaining'), message=document.getElementById('message');
+  const rollBtn=document.getElementById('rollBtn'), undoBtn=document.getElementById('undoBtn'), hint=document.getElementById('hint');
+  const whiteTurn=document.getElementById('whiteTurn'), blackTurn=document.getElementById('blackTurn'), victoryModal=document.getElementById('victoryModal');
+
+  function cancelTransition(){
+    if(transitionTimer!==null){clearTimeout(transitionTimer);transitionTimer=null}
+    stateVersion++; inputLocked=false;
+  }
+  function scheduleEndTurn(delay=450){
+    const version=stateVersion; inputLocked=true; render();
+    transitionTimer=setTimeout(()=>{
+      transitionTimer=null;
+      if(version!==stateVersion)return;
+      inputLocked=false; endTurn();
+    },delay);
+  }
+
+  function playVictorySound(){
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const ctx=new AC();
+      const now=ctx.currentTime;[523.25,659.25,783.99,1046.5].forEach((freq,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0,now+i*.12);g.gain.linearRampToValueAtTime(.16,now+i*.12+.02);g.gain.exponentialRampToValueAtTime(.001,now+i*.12+.28);o.connect(g);g.connect(ctx.destination);o.start(now+i*.12);o.stop(now+i*.12+.3)});
+      setTimeout(()=>ctx.close().catch(()=>{}),1200);
+    }catch(e){}
+  }
+  function celebrateWinner(color){
+    const name=color==='white'?'白':'黒';
+    document.getElementById('victoryPlayer').textContent=`${name}の勝ち！`;
+    document.getElementById('victoryMessage').textContent='15個すべての駒をゴールしました。すばらしい対局です！ 🎉';
+    document.getElementById('victoryIcon').textContent=color==='white'?'🏆⚪':'🏆⚫';
+    victoryModal.classList.add('show');playVictorySound();
+  }
+  function setup(){
+    cancelTransition();
+    points.forEach(p=>{p.color=null;p.count=0});
+    setPoint(24,'white',2); setPoint(13,'white',5); setPoint(8,'white',3); setPoint(6,'white',5);
+    setPoint(1,'black',2); setPoint(12,'black',5); setPoint(17,'black',3); setPoint(19,'black',5);
+    bar={white:0,black:0};off={white:0,black:0};turn='white';dice=[];rolled=false;selected=null;history=[];winner=null;victoryModal.classList.remove('show');message.textContent='白の番です。サイコロを振ってください。';hint.innerHTML='<strong>💡 ヒント</strong><br>まず「サイコロを振る」を押しましょう。白は24→1へ進みます。';render();
+  }
+  function setPoint(n,color,count){points[n-1]={color,count}}
+  function cloneState(){return JSON.stringify({points,bar,off,turn,dice,rolled,selected,winner})}
+  function restore(s){cancelTransition();const o=JSON.parse(s);o.points.forEach((p,i)=>points[i]=p);bar=o.bar;off=o.off;turn=o.turn;dice=o.dice;rolled=o.rolled;selected=o.selected;winner=o.winner;render()}
+  function save(){history.push(cloneState());if(history.length>80)history.shift()}
+
+  function render(){
+    pf.innerHTML='';
+    const orderTop=[13,14,15,16,17,18,'bar',19,20,21,22,23,24];
+    const orderBottom=[12,11,10,9,8,7,'bar2',6,5,4,3,2,1];
+    [...orderTop,...orderBottom].forEach((n,idx)=>{
+      if(n==='bar'){
+        const b=document.createElement('div');b.className='bar';b.innerHTML=`<div class="bar-zone top" data-bar="black"></div><div class="bar-zone bottom" data-bar="white"></div>`;pf.appendChild(b);return;
+      }
+      if(n==='bar2')return;
+      const top=idx<13;const d=document.createElement('div');d.className=`point ${top?'top':'bottom'} ${n%2?'dark':'light'}`;d.dataset.point=n;
+      d.style.gridColumn=top?(idx+1):(idx-13+1); d.style.gridRow=top?1:2;
+      const tri=document.createElement('div');tri.className='triangle';d.appendChild(tri);
+      const st=document.createElement('div');st.className='stack';
+      const p=points[n-1];const shown=Math.min(p.count,5);
+      for(let i=0;i<shown;i++){const c=document.createElement('div');c.className=`checker ${p.color}`;if(i===shown-1&&p.count>5)c.textContent=p.count;st.appendChild(c)}
+      d.appendChild(st);pf.appendChild(d);
+    });
+    document.querySelectorAll('.bar-zone').forEach(z=>{const color=z.dataset.bar;for(let i=0;i<bar[color];i++){const c=document.createElement('div');c.className=`checker ${color}`;z.appendChild(c)}});
+    if(selected!==null){const sel=selected==='bar'?document.querySelector(`.bar-zone[data-bar="${turn}"]`):document.querySelector(`[data-point="${selected}"]`);sel?.classList.add('selected');legalDestinations(selected).forEach(n=>document.querySelector(`[data-point="${n}"]`)?.classList.add('legal'))}
+    document.getElementById('die1').textContent=dice[0]||'⚀';document.getElementById('die2').textContent=dice[1]||'⚀';
+    remaining.textContent=dice.length?dice.join('・'):'サイコロを振ってください';
+    status.innerHTML=winner?`<b>🏆 ${winner==='white'?'白':'黒'}の勝ちです！</b>`:`<b>${turn==='white'?'⚪ 白':'⚫ 黒'}の番</b> ${rolled?'— 駒を動かしてください':'— サイコロを振ってください'}`;
+    whiteTurn.classList.toggle('active',!winner&&turn==='white');blackTurn.classList.toggle('active',!winner&&turn==='black');
+    document.body.classList.toggle('white-turn',!winner&&turn==='white');document.body.classList.toggle('black-turn',!winner&&turn==='black');
+    rollBtn.disabled=rolled||!!winner||inputLocked;undoBtn.disabled=!history.length||inputLocked;
+    document.getElementById('newBtn').disabled=inputLocked;
+    renderOff();
+  }
+  function renderOff(){['white','black'].forEach(color=>{const el=document.getElementById(color==='white'?'offWhite':'offBlack');const countEl=document.getElementById(color==='white'?'offWhiteCount':'offBlackCount');el.innerHTML='';countEl.textContent=`${off[color]} / 15`;for(let i=0;i<off[color];i++){const p=document.createElement('div');p.className=`off-piece ${color}`;p.title=`${color==='white'?'白':'黒'}のゴール済み駒 ${i+1}`;el.appendChild(p)}})}
+
+  function allHome(color){
+    if(bar[color]>0)return false;
+    for(let n=1;n<=24;n++){const p=points[n-1];if(p.color===color&&p.count){if(color==='white'&&n>6)return false;if(color==='black'&&n<19)return false}}
+    return true;
+  }
+  function canLand(n,color){if(n<1||n>24)return false;const p=points[n-1];return !p.color||p.color===color||p.count===1}
+  function destination(from,die){if(from==='bar')return turn==='white'?25-die:die;return turn==='white'?from-die:from+die}
+  function canBearOff(from,die){if(!allHome(turn))return false;const dest=destination(from,die);if(turn==='white'){
+      if(dest===0)return true;if(dest<0){for(let n=from+1;n<=6;n++){const p=points[n-1];if(p.color==='white'&&p.count)return false}return true}
+    }else{if(dest===25)return true;if(dest>25){for(let n=19;n<from;n++){const p=points[n-1];if(p.color==='black'&&p.count)return false}return true}}
+    return false;
+  }
+  function legalMovesForDie(die){
+    const moves=[];
+    if(bar[turn]>0){const to=destination('bar',die);if(canLand(to,turn))moves.push({from:'bar',to,die});return moves}
+    for(let from=1;from<=24;from++){const p=points[from-1];if(p.color!==turn||!p.count)continue;const to=destination(from,die);if(to>=1&&to<=24&&canLand(to,turn))moves.push({from,to,die});else if(canBearOff(from,die))moves.push({from,to:'off',die})}
+    return moves;
+  }
+  function legalDestinations(from){
+    const out=[];for(const die of [...new Set(dice)])for(const m of legalMovesForDie(die))if(m.from===from&&m.to!=='off')out.push(m.to);return [...new Set(out)]
+  }
+  function hasAnyMove(){return dice.some(d=>legalMovesForDie(d).length)}
+
+  function roll(){
+    if(rolled||winner||inputLocked)return;cancelTransition();save();const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);dice=a===b?[a,a,a,a]:[a,b];rolled=true;selected=null;
+    if(!hasAnyMove()){message.textContent='動かせる駒がありません。自動的に相手の番へ移ります。';hint.innerHTML='<strong>💡 ヒント</strong><br>どの駒もサイコロの目で合法的に動かせないため、この手番はパスです。';scheduleEndTurn(500)}else {message.textContent='駒を選び、緑色の移動先をクリックしてください。';hint.innerHTML=`<strong>💡 ヒント</strong><br>サイコロは ${a} と ${b}。${a===b?'ゾロ目なので、この目を4回使えます。':'それぞれの目を1回ずつ使います。'} 動かせる駒を選ぶと移動先が緑になります。`;}render();
+  }
+  function chooseSource(src){if(!rolled||winner||inputLocked)return;if(bar[turn]>0&&src!=='bar'){message.textContent='先にバー上の駒を盤上へ戻してください。';hint.innerHTML='<strong>💡 ヒント</strong><br>バーに駒があるときは、その駒の復帰が最優先です。ほかの駒はまだ動かせません。';return}const legal=dice.some(d=>legalMovesForDie(d).some(m=>m.from===src));if(!legal){message.textContent='その駒は現在動かせません。';return}selected=src;message.textContent='緑色の地点を選んでください。';hint.innerHTML='<strong>💡 ヒント</strong><br>緑色の丸が合法的な移動先です。相手の駒が1個だけなら、そこへ移動してヒットできます。';render()}
+  function move(to){
+    if(selected===null||inputLocked)return;let move=null;
+    for(let i=0;i<dice.length;i++){const d=dice[i];const m=legalMovesForDie(d).find(x=>x.from===selected&&x.to===to);if(m){move={...m,index:i};break}}
+    if(!move){message.textContent='そこへは移動できません。';return}
+    save();applyMove(move);selected=null;dice.splice(move.index,1);
+    if(off[turn]===15){winner=turn;message.textContent=`🏆 ${turn==='white'?'白':'黒'}が15個すべての駒をゴールしました！ おめでとう！`;render();celebrateWinner(turn);return}
+    if(!dice.length){endTurn();return}
+    if(!hasAnyMove()){message.textContent='残りの目では動かせません。相手の番へ移ります。';scheduleEndTurn(500);return}
+    message.textContent='続けて駒を動かしてください。';render();
+  }
+  function applyMove(m){
+    if(m.from==='bar')bar[turn]--;else{const p=points[m.from-1];p.count--;if(!p.count)p.color=null}
+    if(m.to==='off'){off[turn]++;hint.innerHTML='<strong>🏁 ベアオフ</strong><br>駒を1個ゴールさせました。15個すべてを先に出せば勝ちです。';return}
+    const p=points[m.to-1];const opp=turn==='white'?'black':'white';
+    if(p.color===opp&&p.count===1){p.color=null;p.count=0;bar[opp]++;hint.innerHTML='<strong>💥 ヒット！</strong><br>相手の1個だけの駒を取りました。取られた駒はバーから復帰するまで、ほかの駒を動かせません。'}
+    if(!p.color)p.color=turn;p.count++;
+  }
+  function tryBearOff(src){
+    if(selected!==src||inputLocked)return;for(let i=0;i<dice.length;i++){const d=dice[i];const m=legalMovesForDie(d).find(x=>x.from===src&&x.to==='off');if(m){save();applyMove({...m,index:i});dice.splice(i,1);selected=null;if(off[turn]===15){winner=turn;message.textContent=`🏆 ${turn==='white'?'白':'黒'}の勝ちです！ おめでとう！`;render();celebrateWinner(turn);return}if(!dice.length||!hasAnyMove())endTurn();else render();return}}
+  }
+  function endTurn(){cancelTransition();turn=turn==='white'?'black':'white';dice=[];rolled=false;selected=null;message.textContent=`${turn==='white'?'白':'黒'}の番です。サイコロを振ってください。`;hint.innerHTML=`<strong>💡 ヒント</strong><br>${turn==='white'?'白は24→1':'黒は1→24'}へ進みます。サイコロを振りましょう。`;render()}
+
+  pf.addEventListener('click',e=>{
+    if(inputLocked)return;
+    const bz=e.target.closest('.bar-zone');if(bz){if(bz.dataset.bar===turn)chooseSource('bar');return}
+    const pt=e.target.closest('.point');if(!pt)return;const n=Number(pt.dataset.point);
+    if(selected!==null&&legalDestinations(selected).includes(n)){move(n);return}
+    const p=points[n-1];if(p.color===turn&&p.count){if(selected===n&&allHome(turn))tryBearOff(n);else chooseSource(n)}
+  });
+  pf.addEventListener('dblclick',e=>{if(inputLocked)return;const pt=e.target.closest('.point');if(!pt)return;const n=Number(pt.dataset.point);if(points[n-1].color===turn){selected=n;tryBearOff(n)}});
+  rollBtn.onclick=roll;
+  document.getElementById('newBtn').onclick=()=>{if(inputLocked)return;if(confirm('対局を最初からやり直しますか？'))setup()};
+  undoBtn.onclick=()=>{if(inputLocked)return;if(history.length)restore(history.pop())};
+
+  const ruleModal=document.getElementById('ruleModal'), tutorialModal=document.getElementById('tutorialModal');
+  document.getElementById('ruleBtn').onclick=()=>ruleModal.classList.add('show');
+  document.getElementById('closeRule').onclick=()=>ruleModal.classList.remove('show');
+  ruleModal.addEventListener('click',e=>{if(e.target===ruleModal)ruleModal.classList.remove('show')});
+  const tutorialSteps=[
+    '<b>1. 目的</b><br>自分の15個の駒をすべてホームボードへ集め、先に全部ゴールさせれば勝ちです。',
+    '<b>2. 進む方向</b><br>白は24→1、黒は1→24へ進みます。2人は反対方向に進みます。',
+    '<b>3. サイコロを振る</b><br>出た2つの目をそれぞれ使います。ゾロ目なら同じ目を4回使えます。',
+    '<b>4. 駒を動かす</b><br>動かしたい駒をクリックすると、移動できる場所が緑色で表示されます。',
+    '<b>5. ヒット</b><br>相手の駒が1個だけの場所には入れます。その駒は中央のバーへ送られます。',
+    '<b>6. バーから復帰</b><br>自分の駒がバーにあるときは、その駒を先に盤へ戻す必要があります。',
+    '<b>7. ゴール</b><br>15個すべてがホームボードに入るとベアオフできます。全部出した人の勝ちです。<br><br>では、実際にサイコロを振ってみましょう！'
+  ];
+  let tutorialIndex=0;
+  function showTutorial(){document.getElementById('tutorialText').innerHTML=tutorialSteps[tutorialIndex];document.getElementById('tutorialPrev').disabled=tutorialIndex===0;document.getElementById('tutorialNext').textContent=tutorialIndex===tutorialSteps.length-1?'ゲームへ':'次へ →'}
+  document.getElementById('tutorialBtn').onclick=()=>{tutorialIndex=0;showTutorial();tutorialModal.classList.add('show')};
+  document.getElementById('tutorialPrev').onclick=()=>{if(tutorialIndex>0){tutorialIndex--;showTutorial()}};
+  document.getElementById('tutorialNext').onclick=()=>{if(tutorialIndex<tutorialSteps.length-1){tutorialIndex++;showTutorial()}else tutorialModal.classList.remove('show')};
+  document.getElementById('tutorialClose').onclick=()=>tutorialModal.classList.remove('show');
+  tutorialModal.addEventListener('click',e=>{if(e.target===tutorialModal)tutorialModal.classList.remove('show')});
+  try{if(!localStorage.getItem('bgTutorialSeen')){tutorialIndex=0;showTutorial();tutorialModal.classList.add('show');localStorage.setItem('bgTutorialSeen','1')}}catch(e){}
+
+  document.getElementById('victoryClose').onclick=()=>victoryModal.classList.remove('show');
+  document.getElementById('victoryNew').onclick=()=>setup();
+  victoryModal.addEventListener('click',e=>{if(e.target===victoryModal)victoryModal.classList.remove('show')});
+
+  setup();
+})();
+</script>
+</body>
+</html>
